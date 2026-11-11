@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 ME-H4RRYY
 """Compile a conservative, domain-only subset of EasyList/EasyPrivacy to DNR data."""
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -15,6 +18,7 @@ SOURCES = {
     "EasyList": "https://easylist.to/easylist/easylist.txt",
     "EasyPrivacy": "https://easylist.to/easylist/easyprivacy.txt",
 }
+COMPILER_VERSION = 2
 DOMAIN_RULE = re.compile(r"^\|\|([a-z0-9.-]+)\^(?:\$(.*))?$")
 ALLOWED_OPTIONS = {"third-party", "script", "image", "stylesheet", "font", "media", "xmlhttprequest", "subdocument", "ping", "object", "other"}
 RESOURCE_TYPES = {
@@ -24,13 +28,13 @@ RESOURCE_TYPES = {
 }
 
 
-def fetch(url: str) -> str:
+def fetch(url: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": "AdaptiveAdBlocker-FilterCompiler/1.0"})
     with urllib.request.urlopen(request, timeout=45) as response:
         content = response.read(32 * 1024 * 1024 + 1)
     if len(content) > 32 * 1024 * 1024:
         raise ValueError(f"Filter source exceeds the 32 MiB limit: {url}")
-    return content.decode("utf-8", errors="replace")
+    return content
 
 
 def compile_lines(lines: list[str]) -> set[str]:
@@ -63,13 +67,28 @@ def main() -> int:
     args = parser.parse_args()
     try:
         sources: dict[str, str] = {}
+        source_provenance: list[dict[str, object]] = []
         files = args.input or []
         if files:
             for path in files:
-                sources[path.name] = path.read_text(encoding="utf-8", errors="replace")
+                raw = path.read_bytes()
+                sources[path.name] = raw.decode("utf-8", errors="replace")
+                source_provenance.append({
+                    "name": path.name,
+                    "origin": "local input file",
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "sizeBytes": len(raw),
+                })
         else:
             for name, url in SOURCES.items():
-                sources[name] = fetch(url)
+                raw = fetch(url)
+                sources[name] = raw.decode("utf-8", errors="replace")
+                source_provenance.append({
+                    "name": name,
+                    "url": url,
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "sizeBytes": len(raw),
+                })
         merged: set[str] = set()
         positive_labels: set[str] = set()
         negative_labels: set[str] = set()
@@ -113,10 +132,17 @@ def main() -> int:
                 "omittedForRuleLimit": 0,
                 "decisionRole": "advisory; maintained filter rules remain authoritative",
             }
+        generated_at = datetime.now(timezone.utc).isoformat()
+        provenance = {
+            "compilerVersion": COMPILER_VERSION,
+            "generatedAt": generated_at,
+            "sources": source_provenance,
+        }
         artifact = {
             "schemaVersion": 1,
-            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "generatedAt": generated_at,
             "sources": list(SOURCES.values()) if not files else [str(path) for path in files],
+            "sourceProvenance": provenance,
             "sourceAttribution": "EasyList authors (https://easylist.to/)",
             "sourceDomainCounts": counts,
             "mlReview": ml_summary,
@@ -125,7 +151,7 @@ def main() -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
         model_path = args.output.with_name("domain-model.json")
-        model_path.write_text(json.dumps({"model": model, "evaluation": metrics}, indent=2) + "\n", encoding="utf-8")
+        model_path.write_text(json.dumps({"model": model, "evaluation": metrics, "sourceProvenance": provenance}, indent=2) + "\n", encoding="utf-8")
         print(f"ML review: {ml_summary['status']} ({model.get('positiveCount', 0)} positive, {model.get('negativeCount', 0)} negative labels)")
         print(f"Compiled {len(merged)} domains from {len(sources)} source(s) into {args.output}")
         return 0
