@@ -1,14 +1,13 @@
-# Community filter sources
+# Community filter sources and licensing
 
-The automated update workflow compiles a deliberately limited, domain-only subset of EasyList and EasyPrivacy. It excludes cosmetic filters, exceptions, redirects, scriptlets, and unsupported syntax. The compiler only emits third-party domain blocks to reduce the chance of breaking first-party site functionality.
+This repository compiles a limited, domain-only subset of these public lists:
 
 - EasyList: <https://easylist.to/easylist/easylist.txt>
 - EasyPrivacy: <https://easylist.to/easylist/easyprivacy.txt>
+- License terms: <https://easylist.to/pages/licence.html>
 
-These lists are maintained by their respective communities. EasyList's current license page says repository contents, including EasyList and EasyPrivacy unless otherwise noted, are dual licensed under GPL-3.0-or-later or CC BY-SA 3.0-or-later. It requests attribution to “The EasyList authors (https://easylist.to/)” where required. This compiler uses only a subset, but the generated rules and model may still be derivative material. The generated feed includes the attribution. Select and document a compatible project license before public distribution; this note is not legal advice.
+The EasyList license page states that repository contents, unless otherwise noted, are dual licensed under GPL version 3 or any later version, or CC BY-SA 3.0 or any later version. The project selects the GPL version 3 option for the included source-derived material and distributes the generated subset and model under GPL-3.0-only. Attribution requested by EasyList: **The EasyList authors** — <https://easylist.to/>. The compiler retains the exact downloaded list bytes in `source-snapshots/` and records their hashes, sizes, URLs, and build metadata in generated artifacts. Each snapshot is committed alongside the output it generated; prior snapshots remain available in Git history.
 
-The ML training labels are extracted from exact-domain block rules and exceptions. They are weak labels from filter syntax, not independently verified ground truth. The model only reports quality metrics and low-confidence candidates; it never decides which rules the extension blocks or invents domains. Derived model artifacts may carry upstream attribution or license requirements; confirm those terms before publication.
+The model uses weak labels extracted from exact-domain block and exception syntax. It only reports advisory quality metrics; it does not control blocking decisions or invent domains. The project applies the same GPL-3.0-only distribution policy to the model and publishes the source snapshots and compiler/training code needed to reproduce it.
 
-## Build provenance
-
-Starting with the next generated feed, the compiler records the compiler version, generation time, each input's canonical source URL, SHA-256 digest, and byte size in both `extension/remote-rules.json` and `extension/domain-model.json`. These fields preserve input provenance; they do not determine the license of derived outputs. Existing feed/model artifacts predate these hashes, so their exact source bytes cannot be reconstructed retrospectively. The project maintainer should obtain qualified review of applicable upstream terms before redistributing generated artifacts.
+The compiler and repository materials are licensed under GPL-3.0-only; see `LICENSE`. This license choice does not transfer ownership of upstream material. Upstream copyright and notices remain with their respective authors. The current generated artifacts predate source snapshots; their exact source bytes were not retained, and hashes cannot be reconstructed from current upstream lists.

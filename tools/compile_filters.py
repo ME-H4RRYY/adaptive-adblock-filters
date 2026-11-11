@@ -18,7 +18,7 @@ SOURCES = {
     "EasyList": "https://easylist.to/easylist/easylist.txt",
     "EasyPrivacy": "https://easylist.to/easylist/easyprivacy.txt",
 }
-COMPILER_VERSION = 2
+COMPILER_VERSION = 3
 DOMAIN_RULE = re.compile(r"^\|\|([a-z0-9.-]+)\^(?:\$(.*))?$")
 ALLOWED_OPTIONS = {"third-party", "script", "image", "stylesheet", "font", "media", "xmlhttprequest", "subdocument", "ping", "object", "other"}
 RESOURCE_TYPES = {
@@ -83,11 +83,15 @@ def main() -> int:
             for name, url in SOURCES.items():
                 raw = fetch(url)
                 sources[name] = raw.decode("utf-8", errors="replace")
+                snapshot_path = Path("source-snapshots") / f"{name.lower()}.txt"
+                snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+                snapshot_path.write_bytes(raw)
                 source_provenance.append({
                     "name": name,
                     "url": url,
                     "sha256": hashlib.sha256(raw).hexdigest(),
                     "sizeBytes": len(raw),
+                    "snapshotPath": snapshot_path.as_posix(),
                 })
         merged: set[str] = set()
         positive_labels: set[str] = set()

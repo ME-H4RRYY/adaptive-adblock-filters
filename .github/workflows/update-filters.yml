@@ -19,16 +19,16 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Compile maintained public lists
+      - name: Compile and preserve maintained public lists
         run: python tools/compile_filters.py
-      - name: Commit changed filter data
+      - name: Commit filter data and corresponding source snapshots
         run: |
-          git add extension/remote-rules.json extension/domain-model.json
+          git add extension/remote-rules.json extension/domain-model.json source-snapshots/
           if git diff --cached --quiet; then
-            echo "No filter changes."
+            echo "No filter or source changes."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: update community filter data"
+          git commit -m "chore: update community filter data and source snapshots"
           git push origin "HEAD:${GITHUB_REF_NAME}"
